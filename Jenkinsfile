@@ -25,25 +25,27 @@ node {
 
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
         stage('Deploye Code') {
-            if (isUnix()) {
-                rc = sh returnStatus: true, script: "${toolbelt}/sfdx force:auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile ${jwt_key_file} --setdefaultdevhubusername --instanceurl ${SFDC_HOST}"
-            }else{
-                 rc = bat returnStatus: true, script: "\"${toolbelt}\" force:auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile \"${jwt_key_file}\" --setdefaultdevhubusername --instanceurl ${SFDC_HOST}"
-            }
+            
+            rc = command "${toolbelt}/sf org login jwt --instanceurl ${SFDC_HOST} --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwt-key-file ${jwt_key_file} --set-default-dev-hub --alias HubOrg"
+            
             if (rc != 0) { error 'hub org authorization failed' }
 
-			println rc
-			
-			// need to pull out assigned username
-			if (isUnix()) {
-				rmsg = sh returnStdout: true, script: "${toolbelt}/sfdx force:mdapi:deploy -d manifest/. -u ${HUB_ORG}"
-			}else{
-			   rmsg = bat returnStdout: true, script: "\"${toolbelt}\" force:mdapi:deploy -d manifest/. -u ${HUB_ORG}"
-			}
+	    println rc
+		
+	    // need to pull out assigned username
+		
+	    rmsg = command "${toolbelt}/sf project deploy start -d manifest/. -u ${HUB_ORG}"
 			  
             printf rmsg
             println('Hello from a Job DSL script!')
             println(rmsg)
         }
+    }
+}
+def command(script) {
+    if (isUnix()) {
+        return sh(returnStatus: true, script: script);
+    } else {
+        return bat(returnStatus: true, script: script);
     }
 }
